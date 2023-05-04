@@ -27,19 +27,19 @@ def open_database():
 	"""
 	This function loads a pickled Pandas DataFrame object from a file called "article_db.pkl". 
 	If this file doesn't exist, it creates an empty dataframe with specified columns (title, citation, year, 
-	abstract, pmid, pmc, mesh, doi, url, tag) and saves it.
+	abstract, pmid, pmc, mesh, doi, url, tag, collection and source) and saves it.
 	"""
 	try: 
 		with open('Pickle/article_db.pkl', 'rb') as handle:
 			df = pickle.load(handle)
 	except:
 		# Define the columns
-		columns = ["title", "citation", "year", "abstract", "pmid", "pmc", "mesh", "doi", "url", "tag"]
+		columns = ["title", "citation", "year", "abstract", "pmid", "pmc", "mesh", "doi", "url", "tag","collection","source"]
 		# Create an empty DataFrame with the specified columns
 		df = pd.DataFrame(columns=columns)
 		df.to_pickle("Pickle/article_db.pkl")
 
-def search_by_gene(file_input,max,sort):
+def search_by_gene(file_input,max,sort,source):
 	"""
 	This function searches for PubMed articles related to a gene or list of genes provided in a text file. 
 	It retrieves article information such as title, citation, year, abstract, pmid, pmc, mesh, doi and url 
@@ -54,7 +54,7 @@ def search_by_gene(file_input,max,sort):
 	with st.spinner("Computing..."):
 		for gene in genes:
 			pmids,query = search_pmids(gene,sort,max)
-			new_pmids = update_database(pmids,'Pickle/article_db.pkl',query)
+			new_pmids = update_database(pmids,'Pickle/article_db.pkl',query,st.session_state.current_collection,source)
 			all_pmids.append(pmids)
 			all_new_pmids.append(new_pmids)
 		pmid_lst = [pmid for sublist in all_pmids for pmid in sublist]
@@ -107,7 +107,7 @@ def search_with_homologues(file,format,pcov,pident):
 	id_list = [str(i) for row in articles for i in row[1].split(",")]
 	return id_list
 
-def search_by_id(pmids):
+def search_by_id(pmids,source):
 	"""
 	This function retrieves article information from PubMed such as title, citation, year, abstract, pmid, pmc, mesh, doi and url 
 	using the metapub and BioPython libraries, based on a list of PubMed IDs provided as an argument. It saves the retrieved article 
@@ -116,7 +116,7 @@ def search_by_id(pmids):
 	open_database()
 	#pmids = [str(i) for i in pmids]
 	with st.spinner("Computing..."):
-		new_pmids = update_database(pmids,'Pickle/article_db.pkl',query='')
+		new_pmids = update_database(pmids,'Pickle/article_db.pkl','',st.session_state.current_collection,source)
 		n_pmids = len(pmids)
 		n_new_pmids = len(new_pmids)
 		st.write(f"New information retrieved for {n_new_pmids} PMIDs from a total of {n_pmids}")

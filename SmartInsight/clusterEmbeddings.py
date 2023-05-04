@@ -78,7 +78,8 @@ def plot_silhouette(silhouette_coefficients, max_clusters):
 
 def get_nCluster(max_clusters, sse):
     kl = KneeLocator(range(1, max_clusters+1), sse, curve="convex", direction="decreasing")
-    return kl.elbow
+    optimal = kl.elbow
+    return optimal
 
 def find_optimal_clusters(silhouette_coefficients):
     max_score = max(silhouette_coefficients)
@@ -123,3 +124,7 @@ def plot_3d_pca_clusters(df, vis_dims3_PCA):
     #plt.show()
     plt.savefig('3dPCA.png')
     st.image('3dPCA.png',width=600)
+
+
+##### Gaussian Mixture Model ####
+

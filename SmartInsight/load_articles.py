@@ -121,7 +121,7 @@ def search_pmids(query, sort_method, max_results):
     return pmids,query
 
 
-def search_pubmed(pmids,query):
+def search_pubmed(pmids,query,collection,source):
     """Retrieves information from PubMed for each PubMed ID returns a dictionary with the PubMed ID as the key and the article information as the value.
     
     Arguments:
@@ -171,7 +171,9 @@ def search_pubmed(pmids,query):
                 'mesh': None,
                 'doi': None,
                 'url': None,
-                'tag': query
+                'tag': query,
+                'collection': collection,
+                'source': source
             }
             
             try:
@@ -229,18 +231,18 @@ def search_pubmed(pmids,query):
     update_data(df)
     return article_dict
 
-def update_database(pmids,data_file,query):
+def update_database(pmids,data_file,query,collection,source):
     """Updates database with articles obtained by the given query.
 
     Arguments:
         query {[string]} -- query for pubmed search
         sort_method {[string]} -- sort method in pubmed database (options: 'relevance','date')
-        data_file {[file]} -- Pickle file with information from retrieved articles (title,citation,year,abstract,pmid,pmc,mesh,doi,url,tag)
+        data_file {[file]} -- Pickle file with information from retrieved articles (title,citation,year,abstract,pmid,pmc,mesh,doi,url,tag,collection,source)
         max_results {[int]} -- maximum number of pubmed ids to obtain in search
 
     """
 
-    article_dict = search_pubmed(pmids,query)
+    article_dict = search_pubmed(pmids,query,collection,source)
     new_pmids = []
     new_pmids = [key for key in article_dict]
     new_df = pd.DataFrame.from_dict(article_dict, orient='index')
