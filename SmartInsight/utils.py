@@ -1,5 +1,6 @@
 import random
 import string
+import streamlit as st
 
 def generate_random_emails():
     """Generates random emails.
@@ -10,7 +11,6 @@ def generate_random_emails():
 
     return ''.join(random.choice(string.ascii_lowercase[:12]) for i in range(7)) + '@' + random.choice([ "hotmail.com", "gmail.com", "aol.com", "mail.com" , "mail.kz", "yahoo.com"])
 
-
+@st.cache_data
 def convert_df(df):
-    # IMPORTANT: Cache the conversion to prevent computation on every rerun
     return df.to_csv(index=False).encode('utf-8')

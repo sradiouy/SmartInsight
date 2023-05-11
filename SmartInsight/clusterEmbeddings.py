@@ -10,10 +10,12 @@ from IPython.display import display_markdown
 import ast
 import pickle
 import streamlit as st
+import mpld3
+import streamlit.components.v1 as components
 
 def cluster_embeddings(df, max_clusters, n_components):
     # Stack the embedding values from the DataFrame into a matrix
-    matrix = np.vstack(df.embedding.values)
+    matrix = np.vstack(df.embeddings.values)
     
     # Perform PCA on the matrix with the specified number of components
     pca = PCA(n_components=n_components)
@@ -44,7 +46,7 @@ def cluster_embeddings(df, max_clusters, n_components):
     # Return the matrix, SSE, and vis_dims_PCA
     return matrix, sse, vis_dims_PCA, silhouette_coefficients
 
-def plot_sse(sse, max_clusters):
+def plot_sse(max_clusters,sse):
     sns.set(style='white', context='notebook', palette='Greens', font='sans-serif', font_scale=1.2)
     fig, ax = plt.subplots()
     ax.plot(range(1, max_clusters+1), sse)
@@ -56,11 +58,14 @@ def plot_sse(sse, max_clusters):
     ax.spines['right'].set_visible(False)
     fig.set_facecolor('white')
     #plt.show()
-    plt.savefig('sse.png')
+    #plt.savefig('sse.png')
     st.write("Elbow method")
-    st.image('sse.png')
+    #st.image('sse.png')
+    #st.pyplot(fig)
+    fig_html = mpld3.fig_to_html(fig)
+    components.html(fig_html, height=600)
 
-def plot_silhouette(silhouette_coefficients, max_clusters):
+def plot_silhouette(max_clusters,silhouette_coefficients):
     sns.set(style='white', context='notebook', palette='Greens', font='sans-serif', font_scale=1.2)
     fig, ax = plt.subplots()
     ax.plot(range(2, max_clusters), silhouette_coefficients)
@@ -72,9 +77,11 @@ def plot_silhouette(silhouette_coefficients, max_clusters):
     ax.spines['right'].set_visible(False)
     fig.set_facecolor('white')
     #plt.show()
-    plt.savefig('silhouette.png')
+    #plt.savefig('silhouette.png')
     st.write("Optimization of the silhouette coefficient")
-    st.image('silhouette.png')
+    #st.image('silhouette.png')
+    fig_html = mpld3.fig_to_html(fig)
+    components.html(fig_html, height=600)
 
 def get_nCluster(max_clusters, sse):
     kl = KneeLocator(range(1, max_clusters+1), sse, curve="convex", direction="decreasing")
