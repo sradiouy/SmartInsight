@@ -59,11 +59,11 @@ def plot_sse(max_clusters,sse):
     fig.set_facecolor('white')
     #plt.show()
     #plt.savefig('sse.png')
-    st.write("Elbow method")
+    #st.write("Elbow method")
     #st.image('sse.png')
     #st.pyplot(fig)
     fig_html = mpld3.fig_to_html(fig)
-    components.html(fig_html, height=600)
+    components.html(fig_html, height=500)
 
 def plot_silhouette(max_clusters,silhouette_coefficients):
     sns.set(style='white', context='notebook', palette='Greens', font='sans-serif', font_scale=1.2)
@@ -78,10 +78,10 @@ def plot_silhouette(max_clusters,silhouette_coefficients):
     fig.set_facecolor('white')
     #plt.show()
     #plt.savefig('silhouette.png')
-    st.write("Optimization of the silhouette coefficient")
+    #st.write("Optimization of the silhouette coefficient")
     #st.image('silhouette.png')
     fig_html = mpld3.fig_to_html(fig)
-    components.html(fig_html, height=600)
+    components.html(fig_html, height=500)
 
 def get_nCluster(max_clusters, sse):
     kl = KneeLocator(range(1, max_clusters+1), sse, curve="convex", direction="decreasing")

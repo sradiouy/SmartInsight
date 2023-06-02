@@ -4,6 +4,9 @@ import streamlit as st
 import openai
 import pandas as pd
 
+if 'key' not in st.session_state:
+    st.session_state.key = None
+
 openai.api_key = st.session_state.key
 
 @st.cache_data(show_spinner=False)
@@ -12,8 +15,9 @@ def ClassifyTopic(abstracts):
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "I need your help to summarize a text containing a range of abstracts, define the main topic of them and define keywords. The keywords must be 3, topic must be defined in a maximum of 8 words and summary no more than 50 words."},
-            {"role": "assistant", "content": "Hello! I'm here to help you with your scientific research. To get started, please provide me with the list of abstracts you're working with. Once I have that, I'll be able to provide you with the assistance you need. Thank you!:\n"},
+            {"role": "user", "content": "I need your help to summarize a text containing a range of abstracts, define the main topic of them and define keywords. The keywords must be 3, topic must be defined in a maximum of 6 words and summary no more than 50 words.\
+                                        I will provide you with all abstracts inside a cluster. I want one summary for all of them, a summary for the cluster NOT for each abstract. Keep the topic and keywords as consise as possible"},
+            {"role": "assistant", "content": "Hello! I'm here to help you with your scientific research. To get started, please provide me with the abstracts in the cluster you're working with. Once I have that, I'll be able to provide you with the assistance you need. Thank you!:\n"},
             {"role": "user", "content": "Given the following text provide your answer: 'Horizontal genomics is a new field in prokaryotic biology that is focused on the analysis of DNA sequences in prokaryotic chromosomes that seem to have originated from other prokaryotes or eukaryotes. However, it is equally important to understand the agents that effect DNA movement: plasmids, bacteriophages and transposons.\
                                             Plasmids are key vectors of horizontal gene transfer and essential genetic engineering tools. They code for genes involved in many aspects of microbial biology, including detoxication, virulence, ecological interactions, and antibiotic resistance. "},
             {"role": "assistant", "content": """
@@ -32,7 +36,10 @@ def ClassifyClusters(n_clusters,abstract_per_cluster,df_clusters):
         if st.session_state.key is not None:
             try:
                 cluster_docs = df_clusters[df_clusters.Cluster == i]
-                texts = " ".join(df_clusters[df_clusters.Cluster == i].documents.sample(abstract_per_cluster, random_state=42).values)
+                if len(cluster_docs) < abstract_per_cluster:
+                    texts = " ".join(df_clusters[df_clusters.Cluster == i].documents.sample(len(cluster_docs), random_state=42).values)
+                else:
+                    texts = " ".join(df_clusters[df_clusters.Cluster == i].documents.sample(abstract_per_cluster, random_state=42).values)
                 #st.write(texts)
                 st.write(f"**Cluster {i}:**")
                 response = ClassifyTopic(texts)
@@ -55,5 +62,7 @@ def ClassifyClusters(n_clusters,abstract_per_cluster,df_clusters):
                 df_result = df_result.append({'cluster': i,'topic': topic,'summary': summary,'keywords': keywords, 'ids':ids}, ignore_index=True)
 
             except Exception as e:
-                st.warning(f"Cluster {i}, has less than {abstract_per_cluster} abstracts")
+                st.warning(f"Could not define topics for Cluster {i}")
+                #response = ClassifyTopic(texts)
+                #st.write(response)
     return df_result

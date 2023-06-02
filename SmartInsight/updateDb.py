@@ -10,8 +10,12 @@ import requests
 from Bio import Entrez
 from unidecode import unidecode
 from bs4 import BeautifulSoup
+import pickle
 
 from utils import generate_random_emails
+from updateDbHomologues import *
+from geneVsIds import gene_vs_ids
+from geneVsProject import project_vs_gene
 
 fetch = PubMedFetcher()
 
@@ -22,16 +26,19 @@ def create_client():
     chroma_client = chromadb.Client(settings)
     return chroma_client
 
-def find_analysis():
+#Find list of existing projects in collection
+def find_project():
     chroma_client = create_client()
     collection_db = get_create_persist_collection(collection_name="database", openai_api_key=st.session_state.key ,chroma_client=chroma_client)
+    #st.write(collection_db.count())
     data = collection_db.get()
     df = pd.DataFrame.from_dict(data)
     df = pd.concat([df.drop(['metadatas'], axis=1), df['metadatas'].apply(pd.Series)], axis=1)
     #st.dataframe(df)
-    unique_analysis = list(set(df['analysis'].str.split(';').explode()))
-    return unique_analysis 
-    
+    unique_project = list(set(df['analysis'].str.split(';').explode()))
+    unique_project = [project for project in unique_project if project != ""]
+    return unique_project 
+
 def get_create_persist_collection(collection_name, openai_api_key, chroma_client, openai_model_name="text-embedding-ada-002"):
     """
     This function creates a persistent collection in ChromaDB with a given name and an OpenAI embedding function.
@@ -73,6 +80,37 @@ def query_builder(keywords):
 
     return query
 
+def search_with_homologues(file,format,pcov,pident):
+    """
+    This function searches for homologous genes based on a given gene file (txt or fasta), it performs a search with
+    these genes and returns a list of retrieved PubMed IDs.. 
+    """
+    articles = ids_by_gene(file, format, pcov, pident)
+    gene_vs_ids(articles)
+    project_vs_gene(articles)
+    id_list = [str(i) for row in articles for i in row[1].split(",")]
+    return id_list
+
+def retrieve_ids():
+	"""
+	This function prompts the user to input one or more PubMed IDs separated by a newline character. 
+	If the user clicks the submit button, this function parses the input text area and returns a list of PubMed IDs.
+	"""
+	pmids = st.text_area("Input PubMed Ids")
+	id_list = [keyword.strip() for keyword in pmids.split("\n") if len(keyword.strip()) >= 1]
+	return id_list
+
+def retrieve_ids_file():
+	"""
+	This function prompts the user to upload a text file containing one or more PubMed IDs. If the user uploads a file, 
+	this function reads the file and returns a list of PubMed IDs.
+	"""
+	uploaded_file = st.file_uploader("Choose a file...",['txt'])
+	if uploaded_file is not None:
+		contents = uploaded_file.read().decode('utf-8')
+		ids = [id.strip() for id in contents.split("\n") if len(id.strip()) >= 1]
+		return ids
+
 
 def search_pmids(query, sort_method, max_results):
     """Searches for the given query on PubMed and returns a list of PMIDs found in the search. 
@@ -85,7 +123,6 @@ def search_pmids(query, sort_method, max_results):
     Returns:
         pmids {[list]} -- list of pmids. Length = max_results.
     """
-
     Entrez.email = generate_random_emails()
     handle = Entrez.esearch(db='pubmed',
                             retmax=max_results,
@@ -207,8 +244,8 @@ def get_metadata(pmid):
     except:
         url = ""
     
-    if st.session_state.current_analysis == None:
-        st.error("No analysis has been chosen")
+    if st.session_state.current_project == None:
+        st.error("No project has been chosen")
 
     return {
         "title": title,
@@ -218,7 +255,7 @@ def get_metadata(pmid):
         "mesh": mesh,
         "doi": doi,
         "url": url,
-        "analysis": st.session_state.current_analysis
+        "analysis": st.session_state.current_project
     }
 
 def update_chromaDB(pmids, chromaDB):
@@ -243,14 +280,14 @@ def update_chromaDB(pmids, chromaDB):
             #st.write("exists")
             existing = chromaDB.get(ids=pmid)
             #st.write(existing)
-            analysis = existing["metadatas"][0]["analysis"]
-            #st.write(analysis)
-            analysis_lst = analysis.split(";")
-            if st.session_state.current_analysis not in analysis_lst:
-                new_analysis =analysis+";"+st.session_state.current_analysis
-                existing["metadatas"][0]["analysis"] = new_analysis
+            project = existing["metadatas"][0]["analysis"]
+            #st.write(project)
+            project_lst = project.split(";")
+            if st.session_state.current_project not in project_lst:
+                new_project =project+";"+st.session_state.current_project
+                existing["metadatas"][0]["analysis"] = new_project
                 chromaDB.update(ids=pmid,metadatas=[existing["metadatas"][0]])
-            #st.write(new_analysis)
+            #st.write(new_project)
         else:
             new_pmids.append(pmid)
             abstract = get_abstract(pmid)
@@ -266,6 +303,43 @@ def update_chromaDB(pmids, chromaDB):
                     ids = pmid
                     )
     return new_pmids
+
+def delete_project(project,chromaDB):
+
+    #Delete project from database
+    data = chromaDB.get()
+    #st.write(data)
+    df = pd.DataFrame.from_dict(data)
+    df = pd.concat([df.drop(['metadatas'], axis=1), df['metadatas'].apply(pd.Series)], axis=1)
+    #st.dataframe(df)
+    project_filter = df["analysis"].str.contains(project)
+    filtered_df = df[project_filter]
+    id_lst = filtered_df["ids"].tolist()
+    for pmid in id_lst:
+        existing = chromaDB.get(ids=pmid)
+        #st.write(existing)
+        all_projects = existing["metadatas"][0]["analysis"]
+        #st.write(all_projects)
+        project_lst = all_projects.split(";")
+        #st.write(project_lst)
+        #st.write("project")
+        #st.write(project)
+        project_lst.remove(project)
+        new_project = ";".join(project_lst)
+        existing["metadatas"][0]["analysis"] = new_project
+        #st.write(new_project)
+        chromaDB.update(ids=pmid,metadatas=[existing["metadatas"][0]])
+        
+    #Delete project from project_vs_gene Pickle file
+    with open("Pickle/gene_network/project_vs_gene.pkl", "rb") as handle:
+        df = pickle.load(handle)
+    #st.dataframe(df)
+    filtered_df = df[df['project'] != project]
+    filtered_df.to_pickle("Pickle/gene_network/project_vs_gene.pkl")
+
+    st.success(f"Project '{project}' has been deleted")
+
+
 
 
     

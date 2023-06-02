@@ -292,7 +292,7 @@ def check_format(input_file, format_file):
     return genes
 
 
-def ids_by_gene(input_file, format_file, pcov=30, pident=30):
+def ids_by_gene(input_file, format_file, pcov, pident):
     """ Create a table (tsv format) of genes and their associated articles
     
     Arguments:
